@@ -1,9 +1,12 @@
-﻿from gotrue.errors import AuthApiError
+import logging
+from gotrue.errors import AuthApiError
 
-from app.core.exceptions import ConflictError, UnauthorizedError
+from app.core.exceptions import ConflictError, InternalServerError, UnauthorizedError
 from app.core.security import create_access_token
-from app.core.supabase import get_supabase_admin
+from app.core.supabase import get_auth_client, get_supabase_admin
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+
+logger = logging.getLogger(__name__)
 
 
 def register_user(data: RegisterRequest) -> TokenResponse:
@@ -23,7 +26,11 @@ def register_user(data: RegisterRequest) -> TokenResponse:
         msg = str(e).lower()
         if "already" in msg or "exists" in msg or "registered" in msg:
             raise ConflictError("Ya existe una cuenta con ese email")
-        raise ConflictError(f"Error al crear el usuario: {e}")
+        logger.exception("Error inesperado de Supabase Auth al registrar usuario: %s", e)
+        raise InternalServerError("Error al crear el usuario en el servicio de autenticación")
+    except Exception as e:
+        logger.exception("Error inesperado en register_user: %s", e)
+        raise InternalServerError("Error interno al procesar el registro")
 
     user = response.user if hasattr(response, "user") else response
     token = create_access_token({"sub": str(user.id), "email": user.email})
@@ -31,10 +38,10 @@ def register_user(data: RegisterRequest) -> TokenResponse:
 
 
 def login_user(data: LoginRequest) -> TokenResponse:
-    admin = get_supabase_admin()
+    auth_client = get_auth_client()
 
     try:
-        response = admin.auth.sign_in_with_password({
+        response = auth_client.auth.sign_in_with_password({
             "email": data.email,
             "password": data.password,
         })

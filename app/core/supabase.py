@@ -1,14 +1,13 @@
-﻿from functools import lru_cache
+from functools import lru_cache
 from supabase import create_client, Client
 from app.config import get_settings
 
 
-@lru_cache(maxsize=1)
-def get_supabase() -> Client:
+def get_auth_client() -> Client:
     """
-    Cliente de Supabase con la ANON KEY.
-    Se usa para operaciones autenticadas con el JWT del usuario.
-    RLS activo — cada usuario solo ve sus datos.
+    Crea una nueva instancia de cliente de Supabase con la ANON KEY.
+    NO se cachea para evitar que la sesión del usuario (JWT) contamine
+    otros requests en el proceso.
     """
     settings = get_settings()
     return create_client(settings.supabase_url, settings.supabase_anon_key)

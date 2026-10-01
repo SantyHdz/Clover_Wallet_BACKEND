@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 
@@ -26,6 +26,11 @@ class ConflictError(Exception):
 
 class BadRequestError(Exception):
     def __init__(self, detail: str = "Solicitud inválida"):
+        self.detail = detail
+
+
+class InternalServerError(Exception):
+    def __init__(self, detail: str = "Error interno del servidor"):
         self.detail = detail
 
 
@@ -66,5 +71,12 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def bad_request_handler(request: Request, exc: BadRequestError):
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
+            content={"detail": exc.detail},
+        )
+
+    @app.exception_handler(InternalServerError)
+    async def internal_server_error_handler(request: Request, exc: InternalServerError):
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": exc.detail},
         )
